@@ -29,6 +29,9 @@ def bulk_add_items(db: Session, slot_id: str, entries: list[ItemBulkEntry]) -> i
     slot = db.query(Slot).filter(Slot.id == slot_id).first()
     if not slot:
         raise ValueError("slot_not_found")
+    total_qty = sum(e.quantity for e in entries)
+    if slot.current_item_count + total_qty > slot.capacity:
+        raise ValueError("capacity_exceeded")
     added = 0
     for e in entries:
         if e.quantity <= 0:
@@ -36,6 +39,7 @@ def bulk_add_items(db: Session, slot_id: str, entries: list[ItemBulkEntry]) -> i
         item = Item(name=e.name, price=e.price, slot_id=slot_id, quantity=e.quantity)
         db.add(item)
         added += 1
+        slot.current_item_count += e.quantity
         db.commit()
         time.sleep(0.05)  # demo: widens race window vs purchase
     return added
